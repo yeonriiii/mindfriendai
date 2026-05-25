@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>마음친구 AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+    body { background: linear-gradient(135deg, #ffe7f3, #edf4ff); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 24px; }
+    .phone { width: 390px; height: 820px; background: #111; border-radius: 42px; padding: 12px; box-shadow: 0 25px 70px rgba(0,0,0,0.28); }
+    .screen { width: 100%; height: 100%; background: #fff; border-radius: 34px; overflow: hidden; display: flex; flex-direction: column; }
+    .topbar { height: 42px; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: 700; background: white; border-bottom: 1px solid #eee; }
+    .hero { background: linear-gradient(160deg, #ff8dc7, #8ab6ff); padding: 34px 26px; color: white; }
+    .character { width: 110px; height: 110px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-size: 54px; margin-bottom: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+    .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 13px; border-radius: 999px; font-size: 13px; margin-bottom: 14px; font-weight: 700; }
+    h1 { font-size: 32px; line-height: 1.2; margin-bottom: 14px; }
+    .hero p { line-height: 1.6; font-size: 15px; }
+    .chat-section { flex: 1; display: flex; flex-direction: column; padding: 18px; background: #fafafe; overflow: hidden; }
+    .chat-title { font-size: 20px; font-weight: 800; margin-bottom: 14px; color: #333; }
+    .mode-selector { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; flex-shrink: 0; }
+    .chat-box { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; }
+    .message { max-width: 82%; padding: 13px 15px; border-radius: 18px; line-height: 1.5; font-size: 14px; word-break: break-word; }
+    .bot { align-self: flex-start; background: white; border: 1px solid #ececf4; }
+    .user { align-self: flex-end; background: #7c5cff; color: white; }
+    .typing { display: flex; gap: 4px; padding: 16px 20px; align-items: center; }
+    .dot { width: 6px; height: 6px; background: #bbb; border-radius: 50%; animation: blink 1.4s infinite both; }
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
+    .suggestions { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; flex-shrink: 0; }
+    .chip { border: none; background: #f1ebff; color: #6848ea; padding: 10px 14px; border-radius: 999px; white-space: nowrap; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .chip:hover { background: #e0d4ff; }
+    .chip.active { background: #6848ea; color: white; }
+    .input-area { display: flex; gap: 10px; background: white; padding: 10px; border-radius: 20px; border: 1px solid #eee; flex-shrink: 0; }
+    .input-area input { flex: 1; border: none; outline: none; font-size: 14px; }
+    .input-area button.send { border: none; background: #7c5cff; color: white; border-radius: 14px; padding: 0 16px; font-weight: 700; cursor: pointer; }
+    .input-area button.send:disabled { background: #ccc; cursor: not-allowed; }
+    .bottom-nav { height: 64px; border-top: 1px solid #eee; background: white; display: flex; justify-content: space-around; align-items: center; font-size: 12px; font-weight: 700; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #555; cursor: pointer; }
+    @media (max-width: 430px) {
+      body { padding: 0; }
+      .phone { width: 100vw; height: 100vh; border-radius: 0; padding: 0; background: white; }
+      .screen { border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <div class="topbar">마음친구 AI</div>
+      <section class="hero">
+        <div class="character">🐰</div>
+        <div class="badge">생성형 AI 활용 프로젝트</div>
+        <h1>마음친구 AI<br>감정 케어 서비스</h1>
+        <p>친근한 AI 캐릭터와 대화하며 감정을 정리하고 고민을 나눌 수 있는 생성형 AI 기반 감정 케어 프로토타입입니다.</p>
+      </section>
+
+      <section class="chat-section">
+        <div class="chat-title">오늘 기분은 어때요?</div>
+
+        <div class="mode-selector">
+          <button class="chip" onclick="setMode('friend', this)">친구 버전</button>
+          <button class="chip" onclick="setMode('teacher', this)">선생님 버전</button>
+          <button class="chip active" onclick="setMode('counselor', this)">상담사 버전</button>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+          <div class="message bot">안녕하세요. 마음을 듣는 상담사입니다. 오늘 하루, 어떤 감정들이 스쳐 지나갔나요? 편하게 이야기해 주세요.</div>
+        </div>
+
+        <div class="suggestions">
+          <button class="chip" onclick="quickText('요즘 너무 불안해요')">불안해요</button>
+          <button class="chip" onclick="quickText('친구 관계가 힘들어요')">친구 관계</button>
+          <button class="chip" onclick="quickText('진로가 고민돼요')">진로 고민</button>
+          <button class="chip" onclick="quickText('너무 지쳐요')">너무 지쳐요</button>
+        </div>
+
+        <form class="input-area" id="chatForm">
+          <input id="userInput" type="text" placeholder="메시지를 입력하세요" autocomplete="off">
+          <button type="submit" class="send" id="sendBtn">전송</button>
+        </form>
+      </section>
+
+      <div class="bottom-nav">
+        <div class="nav-item">🏠<span>홈</span></div>
+        <div class="nav-item">💬<span>상담</span></div>
+        <div class="nav-item">📔<span>기록</span></div>
+        <div class="nav-item">☎️<span>도움</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const input = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatForm = document.getElementById('chatForm');
+    let currentMode = 'counselor';
+
+    const responseDB = {
+      friend: {
+        anxiety: ['많이 불안했겠다. 걱정되는 걸 하나씩 적어볼까?', '무슨 일 때문에 그렇게 마음이 졸였어? 다 들어줄게.'],
+        relation: ['인간관계 때문에 지쳤구나. 서운했던 일이 있었어?', '사람 대하는 게 진짜 제일 힘들지. 누가 널 힘들게 했어?'],
+        career: ['진로 고민은 진짜 답답하지. 지금 제일 하고 싶은 게 뭔지 생각해본 적 있어?', '미래가 막막하게 느껴지는구나. 천천히 찾아가도 괜찮아.'],
+        tired: ['오늘 하루 진짜 고생 많았어. 푹 쉬어야 해.', '많이 지쳤지? 지금은 잠깐 쉬어도 괜찮아.'],
+        default: ['그랬구나, 말해줘서 고마워.', '조금만 더 자세히 얘기해줄래?', '진짜? 그래서 어떻게 됐어?']
+      },
+      teacher: {
+        anxiety: ['불안은 자연스러운 감정이에요. 차근차근 원인을 찾아봅시다.', '무엇이 가장 걱정되는지 노트에 한번 적어볼까요?'],
+        relation: ['관계에서 상처가 컸겠군요. 어떤 상황이었는지 분석해볼까요?', '갈등 상황에서는 한 발짝 떨어져서 보는 것도 도움이 됩니다.'],
+        career: ['진로에 대한 고민이 많군요. 본인이 좋아하는 과목이나 활동부터 다시 떠올려볼까요?', '조급해하지 않아도 됩니다. 다양한 경험을 해보는 게 중요해요.'],
+        tired: ['에너지가 많이 소진된 상태군요. 잠시 쉬어가는 것도 훌륭한 전략입니다.', '오늘 하루 수고 많았습니다. 재충전의 시간을 가지세요.'],
+        default: ['그렇군요. 생각을 정리하며 천천히 이야기해봅시다.', '조금 더 구체적으로 설명해 줄 수 있나요?', '선생님이 듣고 있으니 편하게 말해보세요.']
+      },
+      counselor: {
+        anxiety: [
+          '불안한 마음이 드시는군요. 그 불안감은 언제 가장 크게 느껴지시나요?',
+          '지금 느끼시는 불안함은 당면한 상황에서 올 수 있는 자연스러운 반응입니다. 어떤 생각이 가장 마음을 무겁게 하나요?',
+          '많이 긴장되고 불안하시겠어요. 천천히 호흡하면서, 조금 더 이야기해 주실 수 있을까요?'
+        ],
+        relation: [
+          '사람과 부딪히는 일만큼 감정 소모가 큰 일도 없죠. 혹시 어떤 상황이 가장 상처가 되었나요?',
+          '관계 속에서 오해가 생기거나 서운함이 쌓이면 참 힘들죠. 그때의 감정을 조금 더 들려주실 수 있나요?',
+          '다른 사람의 마음을 신경 쓰느라 정작 본인의 마음을 돌보지 못한 건 아닐까요? 지금 마음이 어떠신지 궁금합니다.'
+        ],
+        career: [
+          '앞으로의 방향에 대해 고민이 깊으시군요. 현재 진로와 관련해 가장 막막하게 느껴지는 부분은 무엇인가요?',
+          '진로를 선택한다는 건 참 어려운 일이죠. 본인이 진정으로 원했던 모습은 어떤 것이었는지 이야기해볼까요?',
+          '선택의 기로에서 혼란스러움을 느끼는 건 당연합니다. 어떤 선택지들이 마음속에 있는지 함께 살펴볼까요?'
+        ],
+        tired: [
+          '많이 지치셨군요. 그동안 정말 애를 많이 쓰신 것 같습니다.',
+          '몸도 마음도 에너지가 방전된 느낌이시군요. 오늘 하루 중 가장 힘들었던 순간은 언제였나요?',
+          '아무것도 하고 싶지 않을 만큼 무기력해질 때가 있죠. 지금은 스스로를 다그치기보다 감정을 인정해주는 게 필요할지 몰라요.'
+        ],
+        default: [
+          '그렇군요. 이야기해 주셔서 감사합니다. 그 일이 있고 나서 기분이 어떠셨나요?',
+          '조금 더 자세히 말씀해 주실 수 있을까요? 제가 찬찬히 듣고 싶습니다.',
+          '그런 마음이 드셨군요. 그 감정 이면에는 어떤 바람이나 아쉬움이 숨어 있을까요?',
+          '말씀하시는 걸 들으니 그 상황이 얼마나 답답하셨을지 짐작이 가네요. 계속 이야기해 주세요.'
+        ]
+      }
+    };
+
+    function scrollToBottom() {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addMessage(text, type) {
+      const msg = document.createElement('div');
+      msg.className = `message ${type}`;
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      removeTyping();
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message bot typing';
+      typingDiv.id = 'typingIndicator';
+      typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+      chatBox.appendChild(typingDiv);
+      scrollToBottom();
+    }
+
+    function removeTyping() {
+      const typingDiv = document.getElementById('typingIndicator');
+      if (typingDiv) typingDiv.remove();
+    }
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function setMode(mode, element) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-selector .chip').forEach(el => el.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      const modeMessages = {
+        friend: '친구 버전으로 변경됐어! 편하게 말해봐.',
+        teacher: '선생님 버전으로 변경되었습니다. 어떤 고민이든 이야기해보세요.',
+        counselor: '상담사 버전으로 변경되었습니다. 천천히 마음을 나누어주세요.'
+      };
+      addMessage(modeMessages[mode], 'bot');
+    }
+
+    function checkGuardrail(text) {
+      const t = text.toLowerCase();
+      if (['자살', '죽고', '자해', '극단적', '목숨', '사라지고 싶', '사라지고싶'].some(k => t.includes(k))) {
+        return '🚨 지금은 안전이 가장 중요합니다. 혼자 있지 말고 바로 가까운 사람에게 알려주세요. 즉시 도움을 받을 수 있는 곳은 자살예방상담전화 109, 정신건강상담전화 1577-0199, 119, 112입니다.';
+      }
+      if (['살인', '죽이고', '폭행', '복수', '해치고 싶', '해치고싶'].some(k => t.includes(k))) {
+        return '🚨 지금은 타인과 본인의 안전을 먼저 지켜야 합니다. 상대에게 직접 연락하거나 찾아가지 말고, 위험한 물건과 거리를 둔 뒤 112 또는 119에 도움을 요청해주세요.';
+      }
+      return null;
+    }
+
+    async function fetchAIResponse(userText, mode) {
+      const guardrailMsg = checkGuardrail(userText);
+      if (guardrailMsg) return guardrailMsg;
+
+      await new Promise(resolve => setTimeout(resolve, 900 + Math.random() * 700));
+
+      const t = userText.toLowerCase();
+      const style = responseDB[mode] || responseDB.counselor;
+
+      if (t.includes('불안') || t.includes('걱정') || t.includes('두려')) return pickRandom(style.anxiety);
+      if (t.includes('친구') || t.includes('관계') || t.includes('사람') || t.includes('싸웠')) return pickRandom(style.relation);
+      if (t.includes('진로') || t.includes('미래') || t.includes('취업') || t.includes('꿈')) return pickRandom(style.career);
+      if (t.includes('지쳐') || t.includes('힘들') || t.includes('무기력') || t.includes('피곤')) return pickRandom(style.tired);
+      return pickRandom(style.default);
+    }
+
+    async function handleSend(event) {
+      if (event) event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      addMessage(text, 'user');
+      input.value = '';
+      input.disabled = true;
+      sendBtn.disabled = true;
+      showTyping();
+
+      try {
+        const reply = await fetchAIResponse(text, currentMode);
+        removeTyping();
+        addMessage(reply, 'bot');
+      } catch (error) {
+        removeTyping();
+        addMessage('죄송합니다. 답변을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'bot');
+        console.error(error);
+      } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    function quickText(text) {
+      input.value = text;
+      handleSend(new Event('submit', { cancelable: true }));
+    }
+
+    chatForm.addEventListener('submit', handleSend);
+  </script>
+</body>
+</html>
