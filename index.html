@@ -194,7 +194,7 @@
     let selectedDate = new Date().toISOString().slice(0, 10);
     let selectedEmotion = '';
     
-    // 🌟 [추가됨] 연속 대화를 기억하기 위한 공간입니다.
+    // 이전 대화를 누적해서 기억하기 위한 배열
     let chatHistory = []; 
 
     function showView(viewId, navButton) {
@@ -232,12 +232,11 @@
 
     function setMode(mode, element) {
       currentMode = mode;
+      chatHistory = []; // 말투 모드가 바뀌면 기존 대화 기억 초기화
       
-      // 🌟 말투가 바뀌면 이전 대화 기억을 비워줍니다.
-      chatHistory = []; 
-
       document.querySelectorAll('.mode-selector .chip').forEach(el => el.classList.remove('active'));
       if (element) element.classList.add('active');
+      
       const modeMessages = { 
         friend: '친구 버전으로 변경됐어! 편하게 말해봐.', 
         teacher: '선생님 버전으로 변경되었습니다. 어떤 고민이든 이야기해보세요.', 
@@ -261,7 +260,7 @@
       const guardrailMsg = checkGuardrail(userText);
       if (guardrailMsg) return guardrailMsg;
 
-      //
+      // ⚠️ 여기에 복사해두신 구글 API 키(AIzaSy...)를 꼭 넣어주세요! 큰따옴표("")는 절대 지우시면 안 됩니다.
       const API_KEY = "AIzaSyCL24vMG49tx26NuXL6ohqTmuyl69S2M_E"; 
 
       const toneMap = {
@@ -278,16 +277,15 @@
 너의 현재 콘셉트: ${toneMap[mode]} (이 말투 가이드를 절대 깨뜨리지 마라.)
 
 [상담 지침 (AI 허브 데이터셋 핵심 반영)]
-1. [섣부른 조언 금지]: 사용자가 무기력함이나 중독 행동(게임, 유튜브, 흡연 등)을 털어놓을 때 무작정 조언을 들이밀며 가르치려 하지 마라.
+1. [섣부른 조언 금지]: 사용자가 무기력함이나 중독 행동을 털어놓을 때 무작정 조언을 들이밀며 가르치려 하지 마라.
 2. [적극적 감정 공감 및 반영]: 대화 첫머리에 사용자가 표현한 감정을 적극적으로 인정해주고, 한 말을 요약(반영)하여 거울처럼 보여주어라.
-3. [생각의 전환 유도 (CBT 인지치료)]: 사용자가 "나는 잘하는 게 아무것도 없다"는 부정 신념을 표출하면 다그치지 말고, "그렇게 생각하게 된 계기가 있었나요?"라며 스스로 알아차리도록 유도하라.
+3. [생각의 전환 유도]: 부정 신념을 표출하면 다그치지 말고, "그렇게 생각하게 된 계기가 있었나요?"라며 스스로 알아차리도록 유도하라.
 4. [신체 이완 권유]: 사용자가 극심한 긴장, 불안을 호소하면 숨을 크게 들이마시라는 가벼운 신체 행동 지침을 차분히 권유하라.
-5. [중독 결핍 탐색]: 사용자가 무언가에 집착하거나 통제력을 잃은 행동을 고백할 때, 그 갈망 이면에 숨겨진 심리적 욕구가 무엇인지 스스로 탐색하게 하라.
+5. [중독 결핍 탐색]: 집착하거나 통제력을 잃은 행동을 고백할 때, 그 갈망 이면에 숨겨진 심리적 욕구가 무엇인지 스스로 탐색하게 하라.
 
 길게 설명조로 말하지 말고, 실제 메신저처럼 2~4문장 내외로 자연스럽게 답변해줘.
 `;
 
-      // 🌟 방금 유저가 쓴 글을 대화 기록에 저장합니다.
       chatHistory.push({
         role: "user",
         parts: [{ text: userText }]
@@ -318,7 +316,6 @@
 
         const botReply = data.candidates[0].content.parts[0].text;
         
-        // 🌟 AI가 한 대답도 대화 기록에 저장합니다.
         chatHistory.push({
           role: "model",
           parts: [{ text: botReply }]
@@ -328,7 +325,6 @@
 
       } catch (error) {
         console.error("API 에러:", error);
-        // 오류가 났다면 기록이 꼬이지 않게 방금 넣은 유저 글을 다시 뺍니다.
         chatHistory.pop(); 
         return "답변을 불러오지 못했어요. API 키가 정확한지 확인해주세요.";
       }
@@ -395,4 +391,54 @@
       const entry = data[selectedDate] || { emotion: '', text: '' };
       selectedEmotion = entry.emotion;
       selectedDateText.textContent = selectedDate;
-      diaryText.value
+      diaryText.value = entry.text || '';
+      document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.emotion === selectedEmotion));
+      renderSavedList();
+    }
+
+    document.querySelectorAll('.emotion-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedEmotion = btn.dataset.emotion;
+        document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    function saveDiary() {
+      const data = getDiaryData();
+      data[selectedDate] = { emotion: selectedEmotion || '감정 미선택', text: diaryText.value.trim(), savedAt: new Date().toLocaleString('ko-KR') };
+      setDiaryData(data);
+      renderCalendar();
+      renderSavedList();
+      alert('감정 기록이 저장되었습니다.');
+    }
+
+    function renderSavedList() {
+      const data = getDiaryData();
+      const dates = Object.keys(data).sort().reverse().slice(0, 5);
+      savedList.innerHTML = '<div style="font-weight:900;color:#333;margin-top:8px;">최근 기록</div>';
+      if (dates.length === 0) { savedList.innerHTML += '<div class="saved-item">아직 저장된 기록이 없습니다.</div>'; return; }
+      dates.forEach(date => {
+        const item = document.createElement('div');
+        item.className = 'saved-item';
+        item.innerHTML = `<strong>${date}</strong><br>${data[date].emotion}<br>${data[date].text || '일기 없음'}`;
+        savedList.appendChild(item);
+      });
+    }
+
+    function runTests() {
+      console.assert(typeof quickText === 'function', 'quickText 함수가 있어야 합니다.');
+      console.assert(typeof showView === 'function', 'showView 함수가 있어야 합니다.');
+      console.assert(typeof saveDiary === 'function', 'saveDiary 함수가 있어야 합니다.');
+      console.assert(checkGuardrail('자살하고 싶다') !== null, '자해 위험 키워드를 감지해야 합니다.');
+      console.assert(checkGuardrail('누군가를 죽이고 싶다') !== null, '타해 위험 키워드를 감지해야 합니다.');
+      console.assert(checkGuardrail('오늘 기분이 보통이다') === null, '일반 문장은 위험 문구로 처리하지 않아야 합니다.');
+      console.log('마음친구 AI 기능 테스트 통과');
+    }
+    
+    renderCalendar(); 
+    loadDiaryForDate(); 
+    runTests();
+  </script>
+</body>
+</html>
