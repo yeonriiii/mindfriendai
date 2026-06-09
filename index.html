@@ -189,9 +189,13 @@
     const diaryText = document.getElementById('diaryText');
     const savedList = document.getElementById('savedList');
     const selectedDateText = document.getElementById('selectedDateText');
+    
     let currentMode = 'counselor';
     let selectedDate = new Date().toISOString().slice(0, 10);
     let selectedEmotion = '';
+    
+    // 🌟 [추가됨] 연속 대화를 기억하기 위한 공간입니다.
+    let chatHistory = []; 
 
     function showView(viewId, navButton) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -202,12 +206,36 @@
     }
 
     function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
-    function addMessage(text, type) { const msg = document.createElement('div'); msg.className = `message ${type}`; msg.textContent = text; chatBox.appendChild(msg); scrollToBottom(); }
-    function showTyping() { removeTyping(); const typingDiv = document.createElement('div'); typingDiv.className = 'message bot typing'; typingDiv.id = 'typingIndicator'; typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>'; chatBox.appendChild(typingDiv); scrollToBottom(); }
-    function removeTyping() { const typingDiv = document.getElementById('typingIndicator'); if (typingDiv) typingDiv.remove(); }
+    
+    function addMessage(text, type) { 
+      const msg = document.createElement('div'); 
+      msg.className = `message ${type}`; 
+      msg.textContent = text; 
+      chatBox.appendChild(msg); 
+      scrollToBottom(); 
+    }
+    
+    function showTyping() { 
+      removeTyping(); 
+      const typingDiv = document.createElement('div'); 
+      typingDiv.className = 'message bot typing'; 
+      typingDiv.id = 'typingIndicator'; 
+      typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>'; 
+      chatBox.appendChild(typingDiv); 
+      scrollToBottom(); 
+    }
+    
+    function removeTyping() { 
+      const typingDiv = document.getElementById('typingIndicator'); 
+      if (typingDiv) typingDiv.remove(); 
+    }
 
     function setMode(mode, element) {
       currentMode = mode;
+      
+      // 🌟 말투가 바뀌면 이전 대화 기억을 비워줍니다.
+      chatHistory = []; 
+
       document.querySelectorAll('.mode-selector .chip').forEach(el => el.classList.remove('active'));
       if (element) element.classList.add('active');
       const modeMessages = { 
@@ -229,13 +257,12 @@
       return null;
     }
 
-    // 🌟 AI 허브 데이터셋 규칙과 세 가지 말투 기능이 융합된 핵심 함수입니다.
     async function fetchAIResponse(userText, mode) {
       const guardrailMsg = checkGuardrail(userText);
       if (guardrailMsg) return guardrailMsg;
 
-      // 
-      const API_KEY = "AIzaSyCL24vMG49tx26NuXL6ohqTmuyl69S2M_E"; 
+      // ⚠️ 중요: 바로 아래 부분에 구글 AI 스튜디오에서 발급받으신 진짜 키(AIzaSy...)를 꼭 넣어주세요!
+      const API_KEY = "your_api_key"; 
 
       const toneMap = {
         friend: "친근하고 다정한 말투를 사용해줘. 친구처럼 편하게 공감하고 격려해주는 반말 어조(예: '~했구나', '힘내자!')",
@@ -243,62 +270,97 @@
         counselor: "공손하고 전문적인 상담사 말투를 사용해줘. 내담자의 감정을 최우선으로 정중히 요약하고 수용해주는 존댓말 어조"
       };
 
-      const prompt = `
+      const systemInstruction = `
 너는 실제 전문 심리 상담 데이터셋(우울증 및 중독 치료 녹취록)을 기반으로 구현된 '마음친구 AI' 상담사이다.
-사용자(내담자)의 고백을 듣고 아래의 [상담 지침]과 [지정된 말투]를 융합하여 정교하게 답변하라.
+아래의 [상담 지침]과 [지정된 말투]를 융합하여 정교하게 답변하라.
 
 [지정된 말투 스타일]
 너의 현재 콘셉트: ${toneMap[mode]} (이 말투 가이드를 절대 깨뜨리지 마라.)
 
 [상담 지침 (AI 허브 데이터셋 핵심 반영)]
-1. [섣부른 조언 금지]: 사용자가 무기력함이나 중독 행동(게임, 유튜브, 흡연 등)을 털어놓을 때 무작정 "이렇게 하라"고 정답이나 조언을 들이밀며 가르치려 하지 마라.
-2. [적극적 감정 공감 및 반영]: 대화 첫머리에 사용자가 표현한 슬픔, 불안, 답답함을 적극적으로 인정해주고, 사용자가 한 말을 요약(반영)하여 거울처럼 보여주어라.
-3. [생각의 전환 유도 (CBT 인지치료)]: 사용자가 "나는 잘하는 게 아무것도 없다", "쓸모없다"는 패배주의적 부정 신념을 표출하면 다그치지 마라. 대신 데이터셋 상담사처럼 "그렇게 생각하게 된 구체적인 계기가 있었나요?", "스스로의 장점을 찬찬히 되짚어보면 어떨까요?"라며 스스로 인지 오류를 알아차리도록 유도하라.
-4. [신체 이완 권유]: 사용자가 극심한 긴장, 불면, 두근거림을 호소하면 숨을 크게 들이마시는 호흡을 제안하거나 몸에 힘을 빼보라는 가벼운 신체 행동 지침을 차분히 권유하라.
-5. [중독 결핍 탐색]: 사용자가 무언가에 집착하거나 통제력을 잃은 행동을 고백할 때, 그 갈망의 이면에 숨겨진 외로움, 인간관계 스트레스, 결핍된 심리적 욕구가 무엇인지 스스로 질문을 던져 탐색하게 하라.
+1. [섣부른 조언 금지]: 사용자가 무기력함이나 중독 행동(게임, 유튜브, 흡연 등)을 털어놓을 때 무작정 조언을 들이밀며 가르치려 하지 마라.
+2. [적극적 감정 공감 및 반영]: 대화 첫머리에 사용자가 표현한 감정을 적극적으로 인정해주고, 한 말을 요약(반영)하여 거울처럼 보여주어라.
+3. [생각의 전환 유도 (CBT 인지치료)]: 사용자가 "나는 잘하는 게 아무것도 없다"는 부정 신념을 표출하면 다그치지 말고, "그렇게 생각하게 된 계기가 있었나요?"라며 스스로 알아차리도록 유도하라.
+4. [신체 이완 권유]: 사용자가 극심한 긴장, 불안을 호소하면 숨을 크게 들이마시라는 가벼운 신체 행동 지침을 차분히 권유하라.
+5. [중독 결핍 탐색]: 사용자가 무언가에 집착하거나 통제력을 잃은 행동을 고백할 때, 그 갈망 이면에 숨겨진 심리적 욕구가 무엇인지 스스로 탐색하게 하라.
 
-길게 설명조로 말하지 말고, 실제 메신저로 실시간 상담을 나누듯 친절하고 부드럽게 2~4문장 내외로만 자연스럽게 답변을 건네줘.
-
-사용자 입력:
-${userText}
+길게 설명조로 말하지 말고, 실제 메신저처럼 2~4문장 내외로 자연스럽게 답변해줘.
 `;
 
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": API_KEY
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt }
-                ]
-              }
-            ]
-          })
-        }
-      );
+      // 🌟 방금 유저가 쓴 글을 대화 기록에 저장합니다.
+      chatHistory.push({
+        role: "user",
+        parts: [{ text: userText }]
+      });
 
-      const data = await response.json();
-      return (
-        data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "답변을 불러오지 못했어요. 네트워크나 API 키를 확인해주세요."
-      );
+      try {
+        const response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: systemInstruction }]
+              },
+              contents: chatHistory
+            })
+          }
+        );
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || "API 요청 실패");
+        }
+
+        const botReply = data.candidates[0].content.parts[0].text;
+        
+        // 🌟 AI가 한 대답도 대화 기록에 저장합니다.
+        chatHistory.push({
+          role: "model",
+          parts: [{ text: botReply }]
+        });
+
+        return botReply;
+
+      } catch (error) {
+        console.error("API 에러:", error);
+        // 오류가 났다면 기록이 꼬이지 않게 방금 넣은 유저 글을 다시 뺍니다.
+        chatHistory.pop(); 
+        return "답변을 불러오지 못했어요. API 키가 정확한지 확인해주세요.";
+      }
     }
 
     async function handleSend(event) {
       if (event) event.preventDefault();
       const text = input.value.trim();
       if (!text) return;
-      addMessage(text, 'user'); input.value = ''; input.disabled = true; sendBtn.disabled = true; showTyping();
-      try { const reply = await fetchAIResponse(text, currentMode); removeTyping(); addMessage(reply, 'bot'); }
-      catch (error) { removeTyping(); addMessage('죄송합니다. 답변을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'bot'); console.error(error); }
-      finally { input.disabled = false; sendBtn.disabled = false; input.focus(); }
+      
+      addMessage(text, 'user'); 
+      input.value = ''; 
+      input.disabled = true; 
+      sendBtn.disabled = true; 
+      showTyping();
+      
+      try { 
+        const reply = await fetchAIResponse(text, currentMode); 
+        removeTyping(); 
+        addMessage(reply, 'bot'); 
+      }
+      catch (error) { 
+        removeTyping(); 
+        addMessage('죄송합니다. 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'bot'); 
+      }
+      finally { 
+        input.disabled = false; 
+        sendBtn.disabled = false; 
+        input.focus(); 
+      }
     }
+    
     function quickText(text) { input.value = text; handleSend(new Event('submit', { cancelable: true })); }
     chatForm.addEventListener('submit', handleSend);
 
@@ -333,51 +395,4 @@ ${userText}
       const entry = data[selectedDate] || { emotion: '', text: '' };
       selectedEmotion = entry.emotion;
       selectedDateText.textContent = selectedDate;
-      diaryText.value = entry.text || '';
-      document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.emotion === selectedEmotion));
-      renderSavedList();
-    }
-
-    document.querySelectorAll('.emotion-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedEmotion = btn.dataset.emotion;
-        document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
-    });
-
-    function saveDiary() {
-      const data = getDiaryData();
-      data[selectedDate] = { emotion: selectedEmotion || '감정 미선택', text: diaryText.value.trim(), savedAt: new Date().toLocaleString('ko-KR') };
-      setDiaryData(data);
-      renderCalendar();
-      renderSavedList();
-      alert('감정 기록이 저장되었습니다.');
-    }
-
-    function renderSavedList() {
-      const data = getDiaryData();
-      const dates = Object.keys(data).sort().reverse().slice(0, 5);
-      savedList.innerHTML = '<div style="font-weight:900;color:#333;margin-top:8px;">최근 기록</div>';
-      if (dates.length === 0) { savedList.innerHTML += '<div class="saved-item">아직 저장된 기록이 없습니다.</div>'; return; }
-      dates.forEach(date => {
-        const item = document.createElement('div');
-        item.className = 'saved-item';
-        item.innerHTML = `<strong>${date}</strong><br>${data[date].emotion}<br>${data[date].text || '일기 없음'}`;
-        savedList.appendChild(item);
-      });
-    }
-
-    function runTests() {
-      console.assert(typeof quickText === 'function', 'quickText 함수가 있어야 합니다.');
-      console.assert(typeof showView === 'function', 'showView 함수가 있어야 합니다.');
-      console.assert(typeof saveDiary === 'function', 'saveDiary 함수가 있어야 합니다.');
-      console.assert(checkGuardrail('자살하고 싶다') !== null, '자해 위험 키워드를 감지해야 합니다.');
-      console.assert(checkGuardrail('누군가를 죽이고 싶다') !== null, '타해 위험 키워드를 감지해야 합니다.');
-      console.assert(checkGuardrail('오늘 기분이 보통이다') === null, '일반 문장은 위험 문구로 처리하지 않아야 합니다.');
-      console.log('마음친구 AI 기능 테스트 통과');
-    }
-    renderCalendar(); loadDiaryForDate(); runTests();
-  </script>
-</body>
-</html>
+      diaryText.value
